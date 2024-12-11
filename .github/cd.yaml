@@ -1,0 +1,68 @@
+name: CD - Deploy Terraform Changes
+
+on:
+  push:
+    branches:
+      - main # Dispara o pipeline quando um merge for feito na branch main
+
+jobs:
+  terraform-apply:
+    name: Apply Terraform Changes
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout do código
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Configurar o Terraform CLI
+      - name: Configurando o Terraform CLI
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 5.78
+
+      # 3. Iniciando o Terraform
+      - name: Iniciando o Terraform
+        run: terraform init
+
+      # 4. Validando a configuração do Terraform
+      - name: Validando a configuração do Terraform
+        run: terraform validate
+
+      # 5. Gerando o plano do Terraform
+      - name: Gerando o plano do Terraform
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+
+      # 6. Publicando o plano como artefato para auditoria
+      - name: Publicando o plano como artefato para auditoria
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: tfplan
+
+      # 7. Aplicando o plano (Deploy)
+      - name: Aplicando o plano (Deploy)
+        id: apply
+        run: terraform apply -no-color -auto-approve tfplan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # 8. Notificação de sucesso
+      - name: Notify Success
+        if: success()
+        run: echo "✅ Infraestrutura foi provisionada com sucesso."
+
+      # 9. Destruir infraestrutura em caso de falha
+      - name: Destroy Infrastructure on Failure
+        if: failure()
+        run: terraform destroy -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # 10. Notificar falha
+      - name: Notify Failure
+        if: failure()
+        run: echo "❌ Ocorreu um erro, infraestrutura destruída."

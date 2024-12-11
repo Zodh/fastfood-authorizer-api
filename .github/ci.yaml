@@ -1,0 +1,57 @@
+name: CI - Validate and Plan Terraform
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform-validate-plan:
+    name: Validate and Plan Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout do código
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Configurar o Terraform CLI
+      - name: Configurar o Terraform CLI
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0 # Ajuste para a versão usada no seu projeto
+
+      # 3. Inicializando o Terraform
+      - name: Inicializando o Terraform
+        run: terraform init
+
+      # 4. Validando a configuração do Terraform
+      - name: Validando a configuração do Terraform
+        run: terraform validate
+
+      # 5. Verificando formatação do Terraform
+      - name: Verificando formatação do Terraform
+        run: terraform fmt -check
+        continue-on-error: true
+        
+
+      # 6. Gerarando o plano do Terraform
+      - name: Gerarando o plano do Terraform
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+
+      # 7. Analisando o plano (evitar destruições acidentais)
+      - name: Analisando o plano (evitar destruições acidentais)
+        run: |
+          terraform show -json tfplan | jq '.resource_changes[] | select(.change.actions | index("delete"))' > deletions.json
+          if [ -s deletions.json ]; then
+            echo "ERROR: The Terraform plan includes resource deletions. Please review." >&2
+            exit 1
+          fi
+
+      # 8. Publicando o plano como artefato para revisão manual
+      - name: Publicando o plano como artefato para revisão manual
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: tfplan
