@@ -30,3 +30,10 @@ data "kubernetes_service" "fastfood_service" {
     namespace = "default"
   }
 }
+
+data "kubernetes_service" "payment_service" {
+  metadata {
+    name      = "payment-api"
+    namespace = "default"
+  }
+}

@@ -13,7 +13,8 @@ resource "aws_lambda_function" "eks_invoker" {
 
   environment {
     variables = {
-      EXTERNAL_IP  = "http://${data.kubernetes_service.fastfood_service.status[0].load_balancer[0].ingress[0].hostname}:80"
+      EXTERNAL_IP_API  = "http://${data.kubernetes_service.fastfood_service.status[0].load_balancer[0].ingress[0].hostname}:80"
+      EXTERNAL_IP_PAYMENT  = "http://${data.kubernetes_service.payment_service.status[0].load_balancer[0].ingress[0].hostname}"
       DB_NAME      = "postgres"
       DB_HOST      = split(":", data.aws_db_instance.rds.endpoint)[0]
       DB_USER      = local.postgres_user
