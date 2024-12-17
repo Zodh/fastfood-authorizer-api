@@ -74,6 +74,53 @@ exports.lambdaHandler = async (event) => {
         }
     }
 
+    if (httpMethod === 'POST' && path.includes('/payments')) {
+        try {
+            // Configurar Axios para tratar a resposta como streaming
+            const response = await axios.post(eksUrl, body, {
+                responseType: 'stream', // Stream para lidar com respostas grandes
+                httpsAgent,
+            });
+
+            // Converter o stream em chunks para retornar ao cliente
+            let chunks = [];
+            response.data.on('data', (chunk) => {
+                chunks.push(chunk);
+            });
+
+            // Aguardar o fim do streaming
+            await new Promise((resolve, reject) => {
+                response.data.on('end', resolve);
+                response.data.on('error', reject);
+            });
+
+            const buffer = Buffer.concat(chunks);
+            const base64Data = buffer.toString('base64');
+
+            return {
+                statusCode: 201,
+                headers: {
+                    'Content-Type': 'image/jpeg',
+                    'Transfer-Encoding': 'chunked', // Opcional, o API Gateway geralmente define isso automaticamente
+                },
+                body: base64Data,
+                isBase64Encoded: true,
+            };
+        } catch (error) {
+            console.error('Erro ao processar POST em /payments:', error);
+            const statusCode = error.response ? error.response.status : 500;
+            const errorMessage = error.response ? error.response.data : { message: 'Erro inesperado' };
+
+            return {
+                statusCode: statusCode,
+                body: JSON.stringify({
+                    message: `Erro ao processar a requisição: ${error.message}`,
+                    response: errorMessage,
+                }),
+            };
+        }
+    }
+
     // Fazer a requisição para o EKS
     try {
         let response;
@@ -89,6 +136,9 @@ exports.lambdaHandler = async (event) => {
                 break;
             case 'PUT':
                 response = await axios.put(eksUrl, body, { httpsAgent });
+                break;
+            case 'PATCH': // Adicionando suporte ao PATCH
+                response = await axios.patch(eksUrl, body, { httpsAgent });
                 break;
             default:
                 return {

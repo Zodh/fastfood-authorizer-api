@@ -13,3 +13,8 @@ output "fastfood_api_url" {
   value = data.kubernetes_service.fastfood_service.status[0].load_balancer[0].ingress[0].hostname
   description = "Endpoint público do FastFood API."
 }
+
+output "payment_api_url" {
+  value = data.kubernetes_service.payment_service.status[0].load_balancer[0].ingress[0].hostname
+  description = "Endpoint público do Payment API."
+}
