@@ -15,7 +15,7 @@ data "aws_eks_cluster_auth" "cluster" {
 }
 
 data "aws_db_instance" "rds" {
-  db_instance_identifier = "mydb-instance"
+  db_instance_identifier = "postgres-person"
 }
 
 data "kubernetes_secret" "fastfood_secret" {
@@ -24,16 +24,23 @@ data "kubernetes_secret" "fastfood_secret" {
   }
 }
 
-data "kubernetes_service" "fastfood_service" {
+data "kubernetes_service" "person_service" {
   metadata {
-    name      = "fastfood-api"
+    name      = "person-service"
+    namespace = "default"
+  }
+}
+
+data "kubernetes_service" "order_service" {
+  metadata {
+    name      = "order-service"
     namespace = "default"
   }
 }
 
 data "kubernetes_service" "payment_service" {
   metadata {
-    name      = "payment-api"
+    name      = "payment-service"
     namespace = "default"
   }
 }

@@ -1,14 +1,15 @@
 const axios = require('axios');
 const https = require('https');
-const { Client } = require('pg');
+const {Client} = require('pg');
 
 // Configuração para o banco RDS
 const DB_HOST = process.env.DB_HOST || 'your-rds-endpoint.amazonaws.com';
 const DB_NAME = process.env.DB_NAME || 'your_database_name';
 const DB_USER = process.env.DB_USER || 'your_database_user';
 const DB_PASSWORD = process.env.DB_PASSWORD || 'your_database_password';
-const EXTERNAL_IP_API = process.env.EXTERNAL_IP_API || 'default-elb';
-const EXTERNAL_IP_PAYMENT = process.env.EXTERNAL_IP_PAYMENT || 'default-elb';
+const EXTERNAL_IP_ORDER = process.env.EXTERNAL_IP_ORDER || 'default-order-elb';
+const EXTERNAL_IP_PERSON = process.env.EXTERNAL_IP_PERSON || 'default-person-elb';
+const EXTERNAL_IP_PAYMENT = process.env.EXTERNAL_IP_PAYMENT || 'default-payment-elb';
 
 // Configuração do agente HTTPS para ignorar validação de SSL
 const httpsAgent = new https.Agent({
@@ -40,7 +41,8 @@ async function validateUserExists(cpf) {
 }
 
 exports.lambdaHandler = async (event) => {
-    const eksEndpointApi = EXTERNAL_IP_API;
+    const eksEndpointOrderApi = EXTERNAL_IP_ORDER;
+    const eksEndpointPersonApi = EXTERNAL_IP_PERSON;
     const eksEndpointPayment = EXTERNAL_IP_PAYMENT;
 
     // Extrair informações da solicitação do API Gateway
@@ -49,8 +51,13 @@ exports.lambdaHandler = async (event) => {
     const body = event.body ? JSON.parse(event.body) : null;
     const queryString = event.queryStringParameters || {};
 
-    // Verificar se o path contém "/payments"
-    const eksBaseEndpoint = path.includes('/payments') ? eksEndpointPayment : eksEndpointApi;
+    // Verificar qual o path para redirecionar o serviço
+    const eksBaseEndpoint = path.includes('/payments')
+        ? eksEndpointPayment
+        : path.includes('/customers') || path.includes('/activation-code')
+            ? eksEndpointPersonApi
+            : eksEndpointOrderApi;
+
 
     // Construir a URL completa para o EKS
     const eksUrl = `${eksBaseEndpoint}${path}`;
@@ -60,7 +67,7 @@ exports.lambdaHandler = async (event) => {
         if (!cpf) {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ message: 'CPF é obrigatório para DELETE' }),
+                body: JSON.stringify({message: 'CPF é obrigatório para DELETE'}),
             };
         }
 
@@ -69,7 +76,7 @@ exports.lambdaHandler = async (event) => {
         if (!userExists) {
             return {
                 statusCode: 401,
-                body: JSON.stringify({ message: 'Usuário não autenticado ou não encontrado' }),
+                body: JSON.stringify({message: 'Usuário não autenticado ou não encontrado'}),
             };
         }
     }
@@ -109,7 +116,7 @@ exports.lambdaHandler = async (event) => {
         } catch (error) {
             console.error('Erro ao processar POST em /payments:', error);
             const statusCode = error.response ? error.response.status : 500;
-            const errorMessage = error.response ? error.response.data : { message: 'Erro inesperado' };
+            const errorMessage = error.response ? error.response.data : {message: 'Erro inesperado'};
 
             return {
                 statusCode: statusCode,
@@ -126,24 +133,24 @@ exports.lambdaHandler = async (event) => {
         let response;
         switch (httpMethod) {
             case 'GET':
-                response = await axios.get(eksUrl, { params: queryString, httpsAgent });
+                response = await axios.get(eksUrl, {params: queryString, httpsAgent});
                 break;
             case 'POST':
-                response = await axios.post(eksUrl, body, { httpsAgent });
+                response = await axios.post(eksUrl, body, {httpsAgent});
                 break;
             case 'DELETE':
-                response = await axios.delete(eksUrl, { params: queryString, httpsAgent });
+                response = await axios.delete(eksUrl, {params: queryString, httpsAgent});
                 break;
             case 'PUT':
-                response = await axios.put(eksUrl, body, { httpsAgent });
+                response = await axios.put(eksUrl, body, {httpsAgent});
                 break;
             case 'PATCH': // Adicionando suporte ao PATCH
-                response = await axios.patch(eksUrl, body, { httpsAgent });
+                response = await axios.patch(eksUrl, body, {httpsAgent});
                 break;
             default:
                 return {
                     statusCode: 405,
-                    body: JSON.stringify({ message: 'Method Not Allowed' }),
+                    body: JSON.stringify({message: 'Method Not Allowed'}),
                 };
         }
 
@@ -154,7 +161,7 @@ exports.lambdaHandler = async (event) => {
         };
     } catch (error) {
         const statusCode = error.response ? error.response.status : 500;
-        const errorResponse = error.response ? error.response.data : { message: 'Erro inesperado' };
+        const errorResponse = error.response ? error.response.data : {message: 'Erro inesperado'};
 
         console.error('Erro ao processar a solicitação:', error);
         return {
