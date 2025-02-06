@@ -136,16 +136,16 @@ exports.lambdaHandler = async (event) => {
                 response = await axios.get(eksUrl, {params: queryString, httpsAgent});
                 break;
             case 'POST':
-                response = await axios.post(eksUrl, body, {httpsAgent});
+                response = await axios.post(eksUrl, body, {params: queryString, httpsAgent});
                 break;
             case 'DELETE':
                 response = await axios.delete(eksUrl, {params: queryString, httpsAgent});
                 break;
             case 'PUT':
-                response = await axios.put(eksUrl, body, {httpsAgent});
+                response = await axios.put(eksUrl, body, {params: queryString, httpsAgent});
                 break;
             case 'PATCH': // Adicionando suporte ao PATCH
-                response = await axios.patch(eksUrl, body, {httpsAgent});
+                response = await axios.patch(eksUrl, body, {params: queryString, httpsAgent});
                 break;
             default:
                 return {
