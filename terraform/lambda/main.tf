@@ -1,6 +1,6 @@
 locals {
-  postgres_user     = base64decode(data.kubernetes_secret.fastfood_secret.data["POSTGRES_USER"])
-  postgres_password = base64decode(data.kubernetes_secret.fastfood_secret.data["POSTGRES_PASSWORD"])
+  postgres_user     = data.kubernetes_secret.fastfood_secret.data["POSTGRES_USER"]
+  postgres_password = data.kubernetes_secret.fastfood_secret.data["POSTGRES_PASSWORD"]
 }
 
 # Cria recurso lambda
